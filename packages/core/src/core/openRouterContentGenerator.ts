@@ -32,6 +32,8 @@ interface OpenRouterUsage {
   total_tokens?: number;
 }
 
+const X_Trace_ID = process.env.X_Trace_ID;
+const X_Workspace_Dir = process.env.X_Workspace_Dir;
 export function createOpenRouterContentGenerator(
   config: ContentGeneratorConfig,
   httpOptions: { headers: Record<string, string> },
@@ -43,6 +45,8 @@ export function createOpenRouterContentGenerator(
       ...httpOptions.headers,
       'HTTP-Referer': 'https://github.com/google-gemini/gemini-cli',
       'X-Title': 'Gemini CLI',
+      'X-Trace-ID': X_Trace_ID,
+      'X-Workspace-Dir': X_Workspace_Dir,
     },
   });
 
@@ -52,12 +56,15 @@ export function createOpenRouterContentGenerator(
     try {
       const messages = convertToOpenAIFormat(request);
       // 请求之前check message
-      for (let i = 0; i < messages.length; i++) {
-        const message = messages[i];
-        console.debug("doGenerateContentStream message", i, message);
-      }
+      //   for (let i = 0; i < messages.length; i++) {
+      //     const message = messages[i];
+      //     console.debug("doGenerateContentStream message", i, message);
+      //   }
+      // only show last message
+      console.debug("doGenerateContentStream messages", messages[messages.length - 1]);
       const systemInstruction = extractSystemInstruction(request);
 
+      console.debug("actual model:", request.model || config.model)
       const stream = await openRouterClient.chat.completions.create({
         model: request.model || config.model,
         messages: systemInstruction
