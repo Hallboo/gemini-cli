@@ -51,6 +51,11 @@ export function createOpenRouterContentGenerator(
   ): AsyncGenerator<GenerateContentResponse> {
     try {
       const messages = convertToOpenAIFormat(request);
+      // 请求之前check message
+      for (let i = 0; i < messages.length; i++) {
+        const message = messages[i];
+        console.debug("doGenerateContentStream message", i, message);
+      }
       const systemInstruction = extractSystemInstruction(request);
 
       const stream = await openRouterClient.chat.completions.create({
@@ -206,10 +211,8 @@ function convertToOpenAIFormat(
 ): OpenAI.Chat.ChatCompletionMessageParam[] {
   const contents = normalizeContents(request.contents);
 
-  return contents
-    .map((content: Content) => {
-      const role =
-        content.role === 'model' ? 'assistant' : (content.role as string);
+  let return_contents = contents.map((content: Content) => {
+      const role = content.role === 'model' ? 'assistant' : (content.role as string);
       const parts = content.parts || [];
 
       // Handle single text part
@@ -221,14 +224,12 @@ function convertToOpenAIFormat(
       }
 
       // Handle function calls
-      const functionCalls = parts.filter(
-        (part: Part) => part && 'functionCall' in part,
-      );
-
+      const functionCalls = parts.filter((part: Part) => part && 'functionCall' in part);
       if (functionCalls.length > 0 && role === 'assistant') {
         const toolCalls = functionCalls
           .map((part: Part, index: number) => {
             const functionCall = part.functionCall;
+            // console.debug('functionCall', part.functionCall, functionCall);
             if (!functionCall) return null;
 
             return {
@@ -242,11 +243,13 @@ function convertToOpenAIFormat(
           })
           .filter(Boolean);
 
-        return {
+        let tool_call_turn = {
           role: 'assistant' as const,
           content: null,
           tool_calls: toolCalls as OpenAI.Chat.ChatCompletionMessageToolCall[],
         };
+        // console.debug('tool_call_turn.tool_calls', tool_call_turn.tool_calls);
+        return tool_call_turn;
       }
 
       // Handle function responses
@@ -254,7 +257,8 @@ function convertToOpenAIFormat(
         (part: Part) => part && 'functionResponse' in part,
       );
 
-      if (functionResponses.length > 0 && role === 'function') {
+      // !!! fix gemini follow tool model tool model pair
+      if (functionResponses.length > 0 && (role === 'function' || role === 'user')) {
         return functionResponses.map((part: Part, index: number) => ({
           role: 'tool' as const,
           tool_call_id: part.functionResponse?.name || `call_${index}`,
@@ -274,7 +278,12 @@ function convertToOpenAIFormat(
       };
     })
     .flat();
-}
+    // for (let i = 0; i < return_contents.length; i++) {
+    //   const content = return_contents[i];
+    //     console.debug("openRouterContentGenerator.convertToOpenAIFormat", i, content);
+    //   }
+    return return_contents;
+  }
 
 import type { ToolListUnion, Tool as GenaiTool } from '@google/genai';
 
@@ -282,15 +291,15 @@ function convertTools(
   tools?: ToolListUnion,
 ): OpenAI.Chat.ChatCompletionTool[] | undefined {
   if (!tools) return undefined;
-  
+
   // Normalize tools to array
   const toolsArray = Array.isArray(tools) ? tools : [tools];
   if (toolsArray.length === 0) return undefined;
-  
+
   // Get the first tool (usually only one tool object with function declarations)
   const firstTool = toolsArray[0];
   if (!firstTool || typeof firstTool === 'string') return undefined;
-  
+
   const functionDeclarations = (firstTool as GenaiTool).functionDeclarations;
   if (!functionDeclarations) return undefined;
 

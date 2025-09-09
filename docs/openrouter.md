@@ -5,15 +5,18 @@ OpenRouter support allows you to use Gemini models through the OpenRouter API ga
 ## Setup
 
 1. **Get an OpenRouter API Key**
+
    - Sign up at [OpenRouter.ai](https://openrouter.ai)
    - Create an API key from your dashboard
 
 2. **Set Environment Variable**
+
    ```bash
    export OPENROUTER_API_KEY="your-api-key-here"
    ```
 
    Or add it to your `.env` file:
+
    ```
    OPENROUTER_API_KEY=your-api-key-here
    ```
@@ -29,6 +32,7 @@ OpenRouter support allows you to use Gemini models through the OpenRouter API ga
 ### Interactive Mode
 
 1. Start Gemini CLI:
+
    ```bash
    gemini
    ```
@@ -40,6 +44,7 @@ OpenRouter support allows you to use Gemini models through the OpenRouter API ga
 ### Non-Interactive Mode
 
 OpenRouter will be used automatically if you have the API key set:
+
 ```bash
 echo "What is the capital of France?" | gemini
 ```
@@ -74,13 +79,17 @@ OpenRouter charges per token based on the model used. Check [OpenRouter pricing]
 ## Troubleshooting
 
 ### "OPENROUTER_API_KEY not found" error
+
 Make sure you've set the environment variable correctly:
+
 ```bash
 echo $OPENROUTER_API_KEY
 ```
 
 ### Rate limiting
+
 OpenRouter has rate limits based on your account tier. If you encounter rate limit errors, consider upgrading your OpenRouter account or reducing request frequency.
 
 ### Model not available
+
 Some Gemini models may have limited availability on OpenRouter. Check the [OpenRouter models page](https://openrouter.ai/models) for current availability.

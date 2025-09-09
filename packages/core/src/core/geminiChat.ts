@@ -99,8 +99,10 @@ function extractCuratedHistory(comprehensiveHistory: Content[]): Content[] {
   const length = comprehensiveHistory.length;
   let i = 0;
   while (i < length) {
+    // console.debug('comprehensiveHistory', comprehensiveHistory[i]);
     if (comprehensiveHistory[i].role === 'user') {
       curatedHistory.push(comprehensiveHistory[i]);
+    //   console.debug('curatedHistory push', curatedHistory[curatedHistory.length - 1]);
       i++;
     } else {
       const modelOutput: Content[] = [];
@@ -114,8 +116,10 @@ function extractCuratedHistory(comprehensiveHistory: Content[]): Content[] {
       }
       if (isValid) {
         curatedHistory.push(...modelOutput);
+        // console.debug('curatedHistory push', curatedHistory[curatedHistory.length - 1]);
       } else {
         // Remove the last user input when model content is invalid.
+        // console.debug('curatedHistory remove', curatedHistory[curatedHistory.length - 1]);
         curatedHistory.pop();
       }
     }

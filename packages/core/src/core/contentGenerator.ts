@@ -35,7 +35,7 @@ function mapGeminiModelToOpenRouter(model: string): string {
     'gemini-1.5-flash': 'google/gemini-flash-1.5',
   };
 
-  return modelMap[model] || `google/${model}`;
+  return modelMap[model] || `${model}`;
 }
 
 /**
@@ -121,7 +121,6 @@ export async function createContentGeneratorConfig(
 
     return contentGeneratorConfig;
   }
-
   if (authType === AuthType.USE_OPENROUTER && openRouterApiKey) {
     contentGeneratorConfig.apiKey = openRouterApiKey;
     contentGeneratorConfig.openRouterBaseUrl =
@@ -130,6 +129,10 @@ export async function createContentGeneratorConfig(
     contentGeneratorConfig.model = mapGeminiModelToOpenRouter(
       contentGeneratorConfig.model,
     );
+
+    console.info("openRouterBaseUrl:", contentGeneratorConfig.openRouterBaseUrl)
+    console.info("apiKey:", contentGeneratorConfig.apiKey?.substring(0, 20))
+    console.info("model:", contentGeneratorConfig.model)
 
     return contentGeneratorConfig;
   }

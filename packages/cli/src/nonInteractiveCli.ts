@@ -66,6 +66,7 @@ export async function runNonInteractive(
     while (true) {
       const functionCalls: FunctionCall[] = [];
 
+      // console.debug('### send message stream', currentMessages[currentMessages.length - 1]);
       const responseStream = await chat.sendMessageStream({
         message: currentMessages[0]?.parts || [], // Ensure parts are always provided
         config: {
@@ -130,6 +131,7 @@ export async function runNonInteractive(
           }
         }
         currentMessages = [{ role: 'user', parts: toolResponseParts }];
+        console.debug('### tool response', toolResponseParts);
       } else {
         process.stdout.write('\n'); // Ensure a final newline
         return;
