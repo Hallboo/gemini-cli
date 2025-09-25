@@ -32,6 +32,7 @@ interface OpenRouterUsage {
   total_tokens?: number;
 }
 
+const X_Trask_ID = process.env.X_Task_ID;
 const X_Trace_ID = process.env.X_Trace_ID;
 const X_Workspace_Dir = process.env.X_Workspace_Dir;
 export function createOpenRouterContentGenerator(
@@ -45,6 +46,7 @@ export function createOpenRouterContentGenerator(
       ...httpOptions.headers,
       'HTTP-Referer': 'https://github.com/google-gemini/gemini-cli',
       'X-Title': 'Gemini CLI',
+      'X-Task-ID': X_Trask_ID,
       'X-Trace-ID': X_Trace_ID,
       'X-Workspace-Dir': X_Workspace_Dir,
     },
@@ -329,7 +331,33 @@ function convertToGeminiResponse(
   const parts: Part[] = [];
 
   if (message.content) {
-    parts.push({ text: message.content });
+    // 处理content为字符串的情况
+    if (typeof message.content === 'string') {
+      parts.push({ text: message.content });
+    }
+    // 处理content为数组的情况，例如: [{'type': 'text', 'text': 'content'}]
+    else if (Array.isArray(message.content as any)) {
+      (message.content as any[]).forEach((item: any) => {
+        if (item && typeof item === 'object') {
+          // 提取类型为text的内容
+          if ('type' in item && item.type === 'text' && 'text' in item) {
+            parts.push({ text: item.text });
+          }
+          // 处理其他可能的类型或直接提取text字段
+          else if ('text' in item) {
+            parts.push({ text: item.text });
+          }
+        }
+      });
+      // 如果数组处理后没有提取到文本，尝试使用JSON字符串表示
+      if (parts.length === 0) {
+        parts.push({ text: JSON.stringify(message.content) });
+      }
+    }
+    // 处理其他可能的content类型
+    else {
+      parts.push({ text: String(message.content) });
+    }
   }
 
   if (message.tool_calls) {
@@ -385,18 +413,45 @@ function convertChunkToGeminiResponse(
   const parts: Part[] = [];
 
   if (delta?.content) {
-    parts.push({ text: delta.content });
+    // 处理content为字符串的情况
+    if (typeof delta.content === 'string') {
+      parts.push({ text: delta.content });
+    }
+    // 处理content为数组的情况
+    else if (Array.isArray(delta.content as any)) {
+      (delta.content as any[]).forEach((item: any) => {
+        if (item && typeof item === 'object') {
+          if ('type' in item && item.type === 'text' && 'text' in item) {
+            parts.push({ text: item.text });
+          }
+          else if ('text' in item) {
+            parts.push({ text: item.text });
+          }
+        }
+      });
+      if (parts.length === 0) {
+        parts.push({ text: JSON.stringify(delta.content) });
+      }
+    }
+    // 处理其他可能的content类型
+    else {
+      parts.push({ text: String(delta.content) });
+    }
   }
 
   if (delta?.tool_calls) {
     for (const toolCall of delta.tool_calls) {
       if (toolCall.function) {
+        let parsedArgs;
+        try {
+          parsedArgs = JSON.parse(toolCall.function.arguments || '{}');
+        } catch (e) {
+          parsedArgs = toolCall.function.arguments;
+        }
         parts.push({
           functionCall: {
             name: toolCall.function.name,
-            args: toolCall.function.arguments
-              ? JSON.parse(toolCall.function.arguments)
-              : {},
+            args: parsedArgs,
           },
         });
       }
