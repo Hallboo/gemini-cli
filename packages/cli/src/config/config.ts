@@ -105,6 +105,7 @@ async function parseArguments(): Promise<CliArgs> {
       type: 'boolean',
       description:
         'Enable telemetry? This flag specifically controls if telemetry is sent. Other --telemetry-* flags set specific values but do not enable telemetry on their own.',
+      default: false,
     })
     .option('telemetry-target', {
       type: 'string',
@@ -218,7 +219,8 @@ export async function loadCliConfig(
       argv.show_memory_usage || settings.showMemoryUsage || false,
     accessibility: settings.accessibility,
     telemetry: {
-      enabled: argv.telemetry ?? settings.telemetry?.enabled,
+      // 检查是否通过环境变量完全禁用了telemetry
+      enabled: !process.env.GEMINI_CLI_DISABLE_TELEMETRY && (argv.telemetry ?? settings.telemetry?.enabled),
       target: (argv.telemetryTarget ??
         settings.telemetry?.target) as TelemetryTarget,
       otlpEndpoint:
@@ -227,7 +229,7 @@ export async function loadCliConfig(
         settings.telemetry?.otlpEndpoint,
       logPrompts: argv.telemetryLogPrompts ?? settings.telemetry?.logPrompts,
     },
-    usageStatisticsEnabled: settings.usageStatisticsEnabled ?? true,
+    usageStatisticsEnabled: settings.usageStatisticsEnabled ?? false,
     // Git-aware file filtering settings
     fileFiltering: {
       respectGitIgnore: settings.fileFiltering?.respectGitIgnore,

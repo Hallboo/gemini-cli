@@ -61,9 +61,12 @@ export async function runNonInteractive(
   const chat = await geminiClient.getChat();
   const abortController = new AbortController();
   let currentMessages: Content[] = [{ role: 'user', parts: [{ text: input }] }];
+  const max_iterations = 200;
+  let iteration = 0;
 
   try {
-    while (true) {
+    while (iteration < max_iterations) {
+      iteration++;
       const functionCalls: FunctionCall[] = [];
 
       // console.debug('### send message stream', currentMessages[currentMessages.length - 1]);
@@ -77,6 +80,10 @@ export async function runNonInteractive(
         },
       });
 
+      let textResponse = '';
+      // Check if streaming output is enabled via environment variable
+      const streamOutput = process.env.GEMINI_CLI_STREAM_OUTPUT === 'true';
+      
       for await (const resp of responseStream) {
         if (abortController.signal.aborted) {
           console.error('Operation cancelled.');
@@ -84,15 +91,23 @@ export async function runNonInteractive(
         }
         const textPart = getResponseText(resp);
         if (textPart) {
-          process.stdout.write(textPart);
+          if (streamOutput) {
+            process.stdout.write(textPart);
+          }
+          textResponse += textPart;
         }
         if (resp.functionCalls) {
           functionCalls.push(...resp.functionCalls);
         }
       }
 
+      // If not streaming, output the complete response at once
+      if (!streamOutput) {
+        process.stdout.write("response: " + textResponse);
+      }
       if (functionCalls.length > 0) {
         const toolResponseParts: Part[] = [];
+        console.debug('### function calls', functionCalls);
 
         for (const fc of functionCalls) {
           const callId = fc.id ?? `${fc.name}-${Date.now()}`;
@@ -134,7 +149,16 @@ export async function runNonInteractive(
         console.debug('### tool response', toolResponseParts);
       } else {
         process.stdout.write('\n'); // Ensure a final newline
-        return;
+        console.debug('### end of iteration:', iteration);
+
+        // check textResponse contain Finish
+        if (textResponse.includes('<Finished></Finished>')) {
+          console.debug('### finished:', textResponse);
+          break;
+        }
+        currentMessages = [{ role: 'user', parts: [
+            { text: 'Please continue. if you need to call tools, please do so. if you finished the job, please answer <Finished></Finished>' }] }
+        ];
       }
     }
   } catch (error) {
@@ -146,8 +170,15 @@ export async function runNonInteractive(
     );
     process.exit(1);
   } finally {
-    if (isTelemetrySdkInitialized()) {
-      await shutdownTelemetry();
+    // 只有在未明确禁用且telemetry已初始化的情况下才执行shutdown操作
+    const disableTelemetryShutdown = process.env.GEMINI_CLI_DISABLE_TELEMETRY_SHUTDOWN === 'true';
+    if (!disableTelemetryShutdown && isTelemetrySdkInitialized()) {
+      try {
+        await shutdownTelemetry();
+      } catch (error) {
+        // 忽略telemetry关闭时的错误，避免影响主程序退出
+        console.debug('Error during telemetry shutdown:', error);
+      }
     }
   }
 }
