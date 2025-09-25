@@ -282,7 +282,7 @@ export class GeminiClient {
         authType: this.config.getContentGeneratorConfig()?.authType,
       });
 
-      const text = getResponseText(result);
+      let text = getResponseText(result);
       if (!text) {
         const error = new Error(
           'API returned an empty response for generateJson.',
@@ -295,6 +295,18 @@ export class GeminiClient {
         );
         throw error;
       }
+
+      if (text.startsWith('```json') && text.endsWith('```')) {
+        const start = 7;
+        let end = text.length;
+        if (text.endsWith('```')) {
+          end = text.length - 3;
+        }
+        console.debug("去除前后的json标记前:", text);
+        text = text.slice(start, end).trim();
+        console.debug("去除前后的json标记```json```:", text);
+      }
+
       try {
         return JSON.parse(text);
       } catch (parseError) {
